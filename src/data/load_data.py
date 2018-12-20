@@ -1,37 +1,42 @@
-import sys, os
-import logging
-import click
-import librosa
+import os
+from pathlib import Path
+from typing import Optional
+import numpy as np
+import librosa #Library for audio data
 
-def load_wav_files(filenames, raw_audio, duration):
-    wav_files = []
-    sr = []
-    file_name = []
-    for f in filenames:
-        audio_samples = librosa.core.load(os.path.join(raw_audio, f),
-                                          sr=None, offset=0.0,
-                                          duration=duration)
-        wav_files.append(audio_samples[0])
-        sr.append(audio_samples[1])
-        file_name.append(os.path.splitext(f)[0])
-    return wav_files, sr, file_name
+def load_wav_file(files:list, path:Path, sample_rate:Optional[int]=None,
+                  offset:float=0.0, duration:Optional[int]=None) -> np.ndarray:
+  '''
+  Reads .wav files into numpy array
+  '''
+  samples_all = []
 
-def load_data(input_filepath, duration=None):
-    # Get list of filenames in raw data directory
-    RAW_AUDIO = os.path.join(input_filepath, "cats_dogs")
-    X_filenames = os.listdir(RAW_AUDIO)
+  for f in files:
+    full_path = path / f
+    if full_path.suffix == '.wav':
+      audio_samples = librosa.core.load(full_path, sr=sample_rate,
+                                        offset=offset, duration=duration)
+      samples_all.append(audio_samples[0])
+  return np.array(samples_all)
 
-    # if filename contains 'cat' y=0 else y=1 (dog)
-    y = [0 if 'cat' in f else 1 for f in X_filenames]
+def get_labels(files:list) -> np.ndarray:
+  '''
+  Get classification labels from file names
+  '''
+  labels = []
+  for f in files:
+    if 'cat' in f:
+      labels.append('cat')
+    elif 'dog' in f:
+      labels.append('dog')
+  return np.array(labels)
 
-    X_all, X_sr, file_name = load_wav_files(X_filenames, RAW_AUDIO, duration)
+if __name__ == '__main__':
+    INPUT_PATH = Path('data/raw/cats_dogs')
+    OUTPUT_PATH = Path('data/interim')
+    files_list = os.listdir(INPUT_PATH)
+    X_all = load_wav_file(files_list, INPUT_PATH)
+    labels = get_labels(files_list)
 
-    # Just in case something goes wrong
-    # Ensure the length of the all lists is equal
-    assert len(y) == len(X_filenames) == len(X_all) == len(X_sr)
-    return X_all, X_sr, y, file_name
-
-def cat_dog_split(X, y):
-    X_cats = [_x for _x, _y in zip(X, y) if _y == 0]
-    X_dogs = [_x for _x, _y in zip(X, y) if _y == 1]
-    return X_cats, X_dogs
+    np.save(OUTPUT_PATH / 'wav_samples.npy', X_all)
+    np.save(OUTPUT_PATH / 'labels.npy', labels)
