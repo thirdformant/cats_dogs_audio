@@ -10,13 +10,15 @@ def load_wav_file(files:list, path:Path, sample_rate:Optional[int]=None,
   Reads .wav files into numpy array
   '''
   samples_all = []
-
+  file_counter = 1
   for f in files:
+    print(f'Reading .wav {file_counter}/{len(files)}')
     full_path = path / f
     if full_path.suffix == '.wav':
       audio_samples = librosa.core.load(full_path, sr=sample_rate,
                                         offset=offset, duration=duration)
       samples_all.append(audio_samples[0])
+    file_counter += 1
   return np.array(samples_all)
 
 def get_labels(files:list) -> np.ndarray:
@@ -40,3 +42,5 @@ if __name__ == '__main__':
 
     np.save(OUTPUT_PATH / 'wav_samples.npy', X_all)
     np.save(OUTPUT_PATH / 'labels.npy', labels)
+    np.save(OUTPUT_PATH / 'filenames.npy',
+            np.array(files_list))
